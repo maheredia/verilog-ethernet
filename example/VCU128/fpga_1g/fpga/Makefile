@@ -1,7 +1,7 @@
 
 # FPGA settings
 FPGA_PART = xcvu37p-fsvh2892-2L-e
-FPGA_TOP = fpga
+FPGA_TOP = fpga_top_vcu128
 FPGA_ARCH = virtexuplus
 
 # Files for synthesis

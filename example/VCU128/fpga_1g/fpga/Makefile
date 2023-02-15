@@ -47,6 +47,7 @@ XDC_FILES += lib/eth/lib/axis/syn/vivado/sync_reset.tcl
 
 # IP
 IP_TCL_FILES = ip/gig_ethernet_pcs_pma_0.tcl
+IP_TCL_FILES += ip/ila.tcl
 
 include ../common/vivado.mk
 

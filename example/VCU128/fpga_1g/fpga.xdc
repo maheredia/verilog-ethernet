@@ -1,3 +1,13 @@
+# General configurations
+set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]
+set_property BITSTREAM.CONFIG.SPI_FALL_EDGE YES [current_design]
+set_property BITSTREAM.CONFIG.CONFIGRATE 63.8 [current_design]
+set_property BITSTREAM.CONFIG.SPI_OPCODE 8'h6B [current_design]
+set_property CONFIG_MODE SPIx4 [current_design]
+set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
+set_property BITSTREAM.CONFIG.UNUSEDPIN Pulldown [current_design]
+set_property CONFIG_VOLTAGE 1.8 [current_design]
+
 # CLK_100
 set_property PACKAGE_PIN BH51 [get_ports {CLKREF_P}]
 set_property IOSTANDARD DIFF_SSTL12 [get_ports {CLKREF_P}]

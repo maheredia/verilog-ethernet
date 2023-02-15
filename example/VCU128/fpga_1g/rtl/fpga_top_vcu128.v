@@ -80,7 +80,7 @@ assign btnl = 1'b0;
 assign btnd = 1'b0;
 assign btnr = 1'b0;
 assign btnc = 1'b0;
-assign sw   = 4'b0000;
+assign sw   = 4'b0001;
 
 // Clock and reset
 
@@ -376,8 +376,10 @@ reg [15:0] mdio_cmd_data = 16'd0;
 reg [1:0] mdio_cmd_opcode = 2'b01;
 reg mdio_cmd_valid = 1'b0;
 wire mdio_cmd_ready;
+wire [15:0] mdio_read_data;
+wire mdio_data_out_valid;
 
-reg [3:0] state_reg = 0;
+reg [4:0] state_reg = 0;
 
 always @(posedge clk_125mhz_int) begin
     if (rst_125mhz_int) begin
@@ -398,97 +400,125 @@ always @(posedge clk_125mhz_int) begin
             case (state_reg)
                 // set SGMII autonegotiation timer to 11 ms
                 // write 0x0070 to CFG4 (0x0031)
-                4'd0: begin
+                5'd0: begin
                     // write to REGCR to load address
                     mdio_cmd_reg_addr <= 5'h0D;
                     mdio_cmd_data <= 16'h001F;
+                    mdio_cmd_opcode <= 2'b01;
                     mdio_cmd_valid <= 1'b1;
-                    state_reg <= 4'd1;
+                    state_reg <= 5'd1;
                 end
-                4'd1: begin
+                5'd1: begin
                     // write address of CFG4 to ADDAR
                     mdio_cmd_reg_addr <= 5'h0E;
                     mdio_cmd_data <= 16'h0031;
+                    mdio_cmd_opcode <= 2'b01;
                     mdio_cmd_valid <= 1'b1;
-                    state_reg <= 4'd2;
+                    state_reg <= 5'd2;
                 end
-                4'd2: begin
+                5'd2: begin
                     // write to REGCR to load data
                     mdio_cmd_reg_addr <= 5'h0D;
                     mdio_cmd_data <= 16'h401F;
+                    mdio_cmd_opcode <= 2'b01;
                     mdio_cmd_valid <= 1'b1;
-                    state_reg <= 4'd3;
+                    state_reg <= 5'd3;
                 end
-                4'd3: begin
+                5'd3: begin
                     // write data for CFG4 to ADDAR
                     mdio_cmd_reg_addr <= 5'h0E;
                     mdio_cmd_data <= 16'h0070;
+                    mdio_cmd_opcode <= 2'b01;
                     mdio_cmd_valid <= 1'b1;
-                    state_reg <= 4'd4;
+                    state_reg <= 5'd4;
                 end
                 // enable SGMII clock output
                 // write 0x4000 to SGMIICTL1 (0x00D3)
-                4'd4: begin
+                5'd4: begin
                     // write to REGCR to load address
                     mdio_cmd_reg_addr <= 5'h0D;
                     mdio_cmd_data <= 16'h001F;
+                    mdio_cmd_opcode <= 2'b01;
                     mdio_cmd_valid <= 1'b1;
-                    state_reg <= 4'd5;
+                    state_reg <= 5'd5;
                 end
-                4'd5: begin
+                5'd5: begin
                     // write address of SGMIICTL1 to ADDAR
                     mdio_cmd_reg_addr <= 5'h0E;
                     mdio_cmd_data <= 16'h00D3;
+                    mdio_cmd_opcode <= 2'b01;
                     mdio_cmd_valid <= 1'b1;
-                    state_reg <= 4'd6;
+                    state_reg <= 5'd6;
                 end
-                4'd6: begin
+                5'd6: begin
                     // write to REGCR to load data
                     mdio_cmd_reg_addr <= 5'h0D;
                     mdio_cmd_data <= 16'h401F;
+                    mdio_cmd_opcode <= 2'b01;
                     mdio_cmd_valid <= 1'b1;
-                    state_reg <= 4'd7;
+                    state_reg <= 5'd7;
                 end
-                4'd7: begin
+                5'd7: begin
                     // write data for SGMIICTL1 to ADDAR
                     mdio_cmd_reg_addr <= 5'h0E;
                     mdio_cmd_data <= 16'h4000;
+                    mdio_cmd_opcode <= 2'b01;
                     mdio_cmd_valid <= 1'b1;
-                    state_reg <= 4'd8;
+                    state_reg <= 5'd8;
                 end
                 // enable 10Mbps operation
                 // write 0x0015 to 10M_SGMII_CFG (0x016F)
-                4'd8: begin
+                5'd8: begin
                     // write to REGCR to load address
                     mdio_cmd_reg_addr <= 5'h0D;
                     mdio_cmd_data <= 16'h001F;
+                    mdio_cmd_opcode <= 2'b01;
                     mdio_cmd_valid <= 1'b1;
-                    state_reg <= 4'd9;
+                    state_reg <= 5'd9;
                 end
-                4'd9: begin
+                5'd9: begin
                     // write address of 10M_SGMII_CFG to ADDAR
                     mdio_cmd_reg_addr <= 5'h0E;
                     mdio_cmd_data <= 16'h016F;
+                    mdio_cmd_opcode <= 2'b01;
                     mdio_cmd_valid <= 1'b1;
-                    state_reg <= 4'd10;
+                    state_reg <= 5'd10;
                 end
-                4'd10: begin
+                5'd10: begin
                     // write to REGCR to load data
                     mdio_cmd_reg_addr <= 5'h0D;
                     mdio_cmd_data <= 16'h401F;
+                    mdio_cmd_opcode <= 2'b01;
                     mdio_cmd_valid <= 1'b1;
-                    state_reg <= 4'd11;
+                    state_reg <= 5'd11;
                 end
-                4'd11: begin
+                5'd11: begin
                     // write data for 10M_SGMII_CFG to ADDAR
                     mdio_cmd_reg_addr <= 5'h0E;
                     mdio_cmd_data <= 16'h0015;
+                    mdio_cmd_opcode <= 2'b01;
                     mdio_cmd_valid <= 1'b1;
-                    state_reg <= 4'd12;
+                    state_reg <= 5'd13;
                 end
-                4'd12: begin
+                // enable SGMII mode (VCU128)
+                5'd13: begin
+                    // Read PHYCR (0x0010)
+                    mdio_cmd_reg_addr <= 5'h10;
+                    mdio_cmd_opcode <= 2'b10;
+                    mdio_cmd_valid <= 1'b1;
+                    state_reg <= 5'd14;
+                end
+                5'd14: begin
+                    //Write SGMII_EN bit of PHYCR (0x0010)
+                    mdio_cmd_reg_addr <= 5'h10;
+                    mdio_cmd_data <= 16'h0800;
+                    mdio_cmd_opcode <= 2'b01;
+                    mdio_cmd_valid <= 1'b1;
+                    state_reg <= 5'd16;
+                end
+                5'd16: begin
                     // done
-                    state_reg <= 4'd12;
+                    state_reg <= 5'd16;
                 end
             endcase
         end
@@ -512,8 +542,8 @@ mdio_master_inst (
     .cmd_valid(mdio_cmd_valid),
     .cmd_ready(mdio_cmd_ready),
 
-    .data_out(),
-    .data_out_valid(),
+    .data_out(mdio_read_data),
+    .data_out_valid(mdio_data_out_valid),
     .data_out_ready(1'b1),
 
     .mdc_o(mdc),

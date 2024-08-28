@@ -36,10 +36,9 @@ module axis_xgmii_rx_64 #
     parameter DATA_WIDTH = 64,
     parameter KEEP_WIDTH = (DATA_WIDTH/8),
     parameter CTRL_WIDTH = (DATA_WIDTH/8),
-    parameter PTP_PERIOD_NS = 4'h6,
-    parameter PTP_PERIOD_FNS = 16'h6666,
     parameter PTP_TS_ENABLE = 0,
-    parameter PTP_TS_WIDTH = 96,
+    parameter PTP_TS_FMT_TOD = 1,
+    parameter PTP_TS_WIDTH = PTP_TS_FMT_TOD ? 96 : 64,
     parameter USER_WIDTH = (PTP_TS_ENABLE ? PTP_TS_WIDTH : 0) + 1
 )
 (
@@ -65,6 +64,11 @@ module axis_xgmii_rx_64 #
      * PTP
      */
     input  wire [PTP_TS_WIDTH-1:0]  ptp_ts,
+
+    /*
+     * Configuration
+     */
+    input  wire                     cfg_rx_enable,
 
     /*
      * Status
@@ -107,8 +111,6 @@ reg [1:0] state_reg = STATE_IDLE, state_next;
 // datapath control signals
 reg reset_crc;
 
-reg [7:0] last_cycle_tkeep_reg = 8'd0, last_cycle_tkeep_next;
-
 reg lanes_swapped = 1'b0;
 reg [31:0] swap_rxd = 32'd0;
 reg [3:0] swap_rxc = 4'd0;
@@ -116,6 +118,9 @@ reg [3:0] swap_rxc_term = 4'd0;
 
 reg [DATA_WIDTH-1:0] xgmii_rxd_masked = {DATA_WIDTH{1'b0}};
 reg [CTRL_WIDTH-1:0] xgmii_term = {CTRL_WIDTH{1'b0}};
+reg [2:0] term_lane_reg = 0, term_lane_d0_reg = 0;
+reg term_present_reg = 1'b0;
+reg framing_error_reg = 1'b0, framing_error_d0_reg = 1'b0;
 
 reg [DATA_WIDTH-1:0] xgmii_rxd_d0 = {DATA_WIDTH{1'b0}};
 reg [DATA_WIDTH-1:0] xgmii_rxd_d1 = {DATA_WIDTH{1'b0}};
@@ -156,6 +161,9 @@ assign crc_valid[2] = crc_next == ~32'he60914ae;
 assign crc_valid[1] = crc_next == ~32'he38a6876;
 assign crc_valid[0] = crc_next == ~32'h6b87b1ec;
 
+reg [4+16-1:0] last_ts_reg = 0;
+reg [4+16-1:0] ts_inc_reg = 0;
+
 assign m_axis_tdata = m_axis_tdata_reg;
 assign m_axis_tkeep = m_axis_tkeep_reg;
 assign m_axis_tvalid = m_axis_tvalid_reg;
@@ -192,70 +200,12 @@ always @* begin
     end
 end
 
-// detect control characters
-reg [7:0] detect_term = 8'd0;
-
-reg [7:0] detect_term_save = 8'd0;
-
-integer i;
-
-// mask errors to within packet
-reg [7:0] control_masked;
-reg [7:0] tkeep_mask;
-
-always @* begin
-    casez (detect_term)
-    8'b00000000: begin
-        control_masked = xgmii_rxc_d0;
-        tkeep_mask = 8'b11111111;
-    end
-    8'bzzzzzzz1: begin
-        control_masked = 0;
-        tkeep_mask = 8'b00000000;
-    end
-    8'bzzzzzz10: begin
-        control_masked = xgmii_rxc_d0[0];
-        tkeep_mask = 8'b00000001;
-    end
-    8'bzzzzz100: begin
-        control_masked = xgmii_rxc_d0[1:0];
-        tkeep_mask = 8'b00000011;
-    end
-    8'bzzzz1000: begin
-        control_masked = xgmii_rxc_d0[2:0];
-        tkeep_mask = 8'b00000111;
-    end
-    8'bzzz10000: begin
-        control_masked = xgmii_rxc_d0[3:0];
-        tkeep_mask = 8'b00001111;
-    end
-    8'bzz100000: begin
-        control_masked = xgmii_rxc_d0[4:0];
-        tkeep_mask = 8'b00011111;
-    end
-    8'bz1000000: begin
-        control_masked = xgmii_rxc_d0[5:0];
-        tkeep_mask = 8'b00111111;
-    end
-    8'b10000000: begin
-        control_masked = xgmii_rxc_d0[6:0];
-        tkeep_mask = 8'b01111111;
-    end
-    default: begin
-        control_masked = xgmii_rxc_d0;
-        tkeep_mask = 8'b11111111;
-    end
-    endcase
-end
-
 always @* begin
     state_next = STATE_IDLE;
 
     reset_crc = 1'b0;
 
-    last_cycle_tkeep_next = last_cycle_tkeep_reg;
-
-    m_axis_tdata_next = {DATA_WIDTH{1'b0}};
+    m_axis_tdata_next = xgmii_rxd_d1;
     m_axis_tkeep_next = {KEEP_WIDTH{1'b1}};
     m_axis_tvalid_next = 1'b0;
     m_axis_tlast_next = 1'b0;
@@ -270,26 +220,11 @@ always @* begin
             // idle state - wait for packet
             reset_crc = 1'b1;
 
-            if (xgmii_start_d1) begin
+            if (xgmii_start_d1 && cfg_rx_enable) begin
                 // start condition
 
-                if (PTP_TS_ENABLE) begin
-                    m_axis_tuser_next[1 +: PTP_TS_WIDTH] = (PTP_TS_WIDTH != 96 || ptp_ts_borrow_reg) ? ptp_ts_reg : ptp_ts_adj_reg;
-                end
-
-                if (control_masked) begin
-                    // control or error characters in first data word
-                    m_axis_tdata_next = {DATA_WIDTH{1'b0}};
-                    m_axis_tkeep_next = 8'h01;
-                    m_axis_tvalid_next = 1'b1;
-                    m_axis_tlast_next = 1'b1;
-                    m_axis_tuser_next[0] = 1'b1;
-                    error_bad_frame_next = 1'b1;
-                    state_next = STATE_IDLE;
-                end else begin
-                    reset_crc = 1'b0;
-                    state_next = STATE_PAYLOAD;
-                end
+                reset_crc = 1'b0;
+                state_next = STATE_PAYLOAD;
             end else begin
                 state_next = STATE_IDLE;
             end
@@ -302,29 +237,28 @@ always @* begin
             m_axis_tlast_next = 1'b0;
             m_axis_tuser_next[0] = 1'b0;
 
-            last_cycle_tkeep_next = {4'b0000, tkeep_mask[7:4]};
-
-            if (detect_term) begin
-                reset_crc = 1'b1;
+            if (PTP_TS_ENABLE) begin
+                m_axis_tuser_next[1 +: PTP_TS_WIDTH] = (!PTP_TS_FMT_TOD || ptp_ts_borrow_reg) ? ptp_ts_reg : ptp_ts_adj_reg;
             end
 
-            if (control_masked) begin
+            if (framing_error_reg || framing_error_d0_reg) begin
                 // control or error characters in packet
                 m_axis_tlast_next = 1'b1;
                 m_axis_tuser_next[0] = 1'b1;
                 error_bad_frame_next = 1'b1;
                 reset_crc = 1'b1;
                 state_next = STATE_IDLE;
-            end else if (detect_term) begin
-                if (detect_term[4:0]) begin
+            end else if (term_present_reg) begin
+                reset_crc = 1'b1;
+                if (term_lane_reg <= 4) begin
                     // end this cycle
-                    m_axis_tkeep_next = {tkeep_mask[3:0], 4'b1111};
+                    m_axis_tkeep_next = {KEEP_WIDTH{1'b1}} >> (CTRL_WIDTH-4-term_lane_reg);
                     m_axis_tlast_next = 1'b1;
-                    if ((detect_term[0] && crc_valid_save[7]) ||
-                        (detect_term[1] && crc_valid[0]) ||
-                        (detect_term[2] && crc_valid[1]) ||
-                        (detect_term[3] && crc_valid[2]) ||
-                        (detect_term[4] && crc_valid[3])) begin
+                    if ((term_lane_reg == 0 && crc_valid_save[7]) ||
+                        (term_lane_reg == 1 && crc_valid[0]) ||
+                        (term_lane_reg == 2 && crc_valid[1]) ||
+                        (term_lane_reg == 3 && crc_valid[2]) ||
+                        (term_lane_reg == 4 && crc_valid[3])) begin
                         // CRC valid
                     end else begin
                         m_axis_tuser_next[0] = 1'b1;
@@ -343,16 +277,16 @@ always @* begin
         STATE_LAST: begin
             // last cycle of packet
             m_axis_tdata_next = xgmii_rxd_d1;
-            m_axis_tkeep_next = last_cycle_tkeep_reg;
+            m_axis_tkeep_next = {KEEP_WIDTH{1'b1}} >> (CTRL_WIDTH+4-term_lane_d0_reg);
             m_axis_tvalid_next = 1'b1;
             m_axis_tlast_next = 1'b1;
             m_axis_tuser_next[0] = 1'b0;
 
             reset_crc = 1'b1;
 
-            if ((detect_term_save[5] && crc_valid_save[4]) ||
-                (detect_term_save[6] && crc_valid_save[5]) ||
-                (detect_term_save[7] && crc_valid_save[6])) begin
+            if ((term_lane_d0_reg == 5 && crc_valid_save[4]) ||
+                (term_lane_d0_reg == 6 && crc_valid_save[5]) ||
+                (term_lane_d0_reg == 7 && crc_valid_save[6])) begin
                 // CRC valid
             end else begin
                 m_axis_tuser_next[0] = 1'b1;
@@ -360,27 +294,19 @@ always @* begin
                 error_bad_fcs_next = 1'b1;
             end
 
-            if (xgmii_start_d1) begin
+            if (xgmii_start_d1 && cfg_rx_enable) begin
                 // start condition
-                if (control_masked) begin
-                    // control or error characters in first data word
-                    m_axis_tdata_next = {DATA_WIDTH{1'b0}};
-                    m_axis_tkeep_next = 8'h01;
-                    m_axis_tvalid_next = 1'b1;
-                    m_axis_tlast_next = 1'b1;
-                    m_axis_tuser_next[0] = 1'b1;
-                    error_bad_frame_next = 1'b1;
-                    state_next = STATE_IDLE;
-                end else begin
-                    reset_crc = 1'b0;
-                    state_next = STATE_PAYLOAD;
-                end
+
+                reset_crc = 1'b0;
+                state_next = STATE_PAYLOAD;
             end else begin
                 state_next = STATE_IDLE;
             end
         end
     endcase
 end
+
+integer i;
 
 always @(posedge clk) begin
     state_reg <= state_next;
@@ -395,10 +321,6 @@ always @(posedge clk) begin
     error_bad_frame_reg <= error_bad_frame_next;
     error_bad_fcs_reg <= error_bad_fcs_next;
 
-    last_cycle_tkeep_reg <= last_cycle_tkeep_next;
-
-    detect_term_save <= detect_term;
-
     swap_rxd <= xgmii_rxd_masked[63:32];
     swap_rxc <= xgmii_rxc[7:4];
     swap_rxc_term <= xgmii_term[7:4];
@@ -406,7 +328,7 @@ always @(posedge clk) begin
     xgmii_start_swap <= 1'b0;
     xgmii_start_d0 <= xgmii_start_swap;
 
-    if (PTP_TS_ENABLE && PTP_TS_WIDTH == 96) begin
+    if (PTP_TS_ENABLE && PTP_TS_FMT_TOD) begin
         // ns field rollover
         ptp_ts_adj_reg[15:0] <= ptp_ts_reg[15:0];
         {ptp_ts_borrow_reg, ptp_ts_adj_reg[45:16]} <= $signed({1'b0, ptp_ts_reg[45:16]}) - $signed(31'd1000000000);
@@ -414,49 +336,80 @@ always @(posedge clk) begin
         ptp_ts_adj_reg[95:48] <= ptp_ts_reg[95:48] + 1;
     end
 
-    if (xgmii_rxc[0] && xgmii_rxd[7:0] == XGMII_START) begin
-        lanes_swapped <= 1'b0;
-        start_packet_reg <= 2'b01;
-        xgmii_rxd_d0 <= xgmii_rxd_masked;
-        xgmii_rxc_d0 <= xgmii_rxc;
-
-        xgmii_start_d0 <= 1'b1;
-        
-        detect_term <= xgmii_term;
-
-        if (PTP_TS_WIDTH == 96) begin
-            ptp_ts_reg[45:0] <= ptp_ts[45:0] + (PTP_PERIOD_NS * 2**16 + PTP_PERIOD_FNS);
-            ptp_ts_reg[95:48] <= ptp_ts[95:48];
-        end else begin
-            ptp_ts_reg <= ptp_ts + (PTP_PERIOD_NS * 2**16 + PTP_PERIOD_FNS);
-        end
-    end else if (xgmii_rxc[4] && xgmii_rxd[39:32] == XGMII_START) begin
-        lanes_swapped <= 1'b1;
-        start_packet_reg <= 2'b10;
+    // lane swapping and termination character detection
+    if (lanes_swapped) begin
         xgmii_rxd_d0 <= {xgmii_rxd_masked[31:0], swap_rxd};
         xgmii_rxc_d0 <= {xgmii_rxc[3:0], swap_rxc};
 
-        xgmii_start_swap <= 1'b1;
+        term_lane_reg <= 0;
+        term_present_reg <= 1'b0;
+        framing_error_reg <= {xgmii_rxc[3:0], swap_rxc} != 0;
 
-        detect_term <= {xgmii_term[3:0], swap_rxc_term};
-
-        if (PTP_TS_WIDTH == 96) begin
-            ptp_ts_reg[45:0] <= ptp_ts[45:0] + (((PTP_PERIOD_NS * 2**16 + PTP_PERIOD_FNS) * 3) >> 1);
-            ptp_ts_reg[95:48] <= ptp_ts[95:48];
-        end else begin
-            ptp_ts_reg <= ptp_ts + (((PTP_PERIOD_NS * 2**16 + PTP_PERIOD_FNS) * 3) >> 1);
+        for (i = CTRL_WIDTH-1; i >= 0; i = i - 1) begin
+            if ({xgmii_term[3:0], swap_rxc_term} & (1 << i)) begin
+                term_lane_reg <= i;
+                term_present_reg <= 1'b1;
+                framing_error_reg <= ({xgmii_rxc[3:0], swap_rxc} & ({CTRL_WIDTH{1'b1}} >> (CTRL_WIDTH-i))) != 0;
+                lanes_swapped <= 1'b0;
+            end
         end
-    end else if (lanes_swapped) begin
-        xgmii_rxd_d0 <= {xgmii_rxd_masked[31:0], swap_rxd};
-        xgmii_rxc_d0 <= {xgmii_rxc[3:0], swap_rxc};
-
-        detect_term <= {xgmii_term[3:0], swap_rxc_term};
     end else begin
         xgmii_rxd_d0 <= xgmii_rxd_masked;
         xgmii_rxc_d0 <= xgmii_rxc;
 
-        detect_term <= xgmii_term;
+        term_lane_reg <= 0;
+        term_present_reg <= 1'b0;
+        framing_error_reg <= xgmii_rxc != 0;
+
+        for (i = CTRL_WIDTH-1; i >= 0; i = i - 1) begin
+            if (xgmii_rxc[i] && (xgmii_rxd[i*8 +: 8] == XGMII_TERM)) begin
+                term_lane_reg <= i;
+                term_present_reg <= 1'b1;
+                framing_error_reg <= (xgmii_rxc & ({CTRL_WIDTH{1'b1}} >> (CTRL_WIDTH-i))) != 0;
+                lanes_swapped <= 1'b0;
+            end
+        end
     end
+
+    // start control character detection
+    if (xgmii_rxc[0] && xgmii_rxd[7:0] == XGMII_START) begin
+        lanes_swapped <= 1'b0;
+
+        xgmii_start_d0 <= 1'b1;
+
+        term_lane_reg <= 0;
+        term_present_reg <= 1'b0;
+        framing_error_reg <= xgmii_rxc[7:1] != 0;
+    end else if (xgmii_rxc[4] && xgmii_rxd[39:32] == XGMII_START) begin
+        lanes_swapped <= 1'b1;
+
+        xgmii_start_swap <= 1'b1;
+
+        term_lane_reg <= 0;
+        term_present_reg <= 1'b0;
+        framing_error_reg <= xgmii_rxc[7:5] != 0;
+    end
+
+    // capture timestamps
+    if (xgmii_start_swap) begin
+        start_packet_reg <= 2'b10;
+        if (PTP_TS_FMT_TOD) begin
+            ptp_ts_reg[45:0] <= ptp_ts[45:0] + (ts_inc_reg >> 1);
+            ptp_ts_reg[95:48] <= ptp_ts[95:48];
+        end else begin
+            ptp_ts_reg <= ptp_ts + (ts_inc_reg >> 1);
+        end
+    end
+
+    if (xgmii_start_d0) begin
+        if (!lanes_swapped) begin
+            start_packet_reg <= 2'b01;
+            ptp_ts_reg <= ptp_ts;
+        end
+    end
+
+    term_lane_d0_reg <= term_lane_reg;
+    framing_error_d0_reg <= framing_error_reg;
 
     if (reset_crc) begin
         crc_state <= 32'hFFFFFFFF;
@@ -468,6 +421,9 @@ always @(posedge clk) begin
 
     xgmii_rxd_d1 <= xgmii_rxd_d0;
     xgmii_start_d1 <= xgmii_start_d0;
+
+    last_ts_reg <= ptp_ts;
+    ts_inc_reg <= ptp_ts - last_ts_reg;
 
     if (rst) begin
         state_reg <= STATE_IDLE;

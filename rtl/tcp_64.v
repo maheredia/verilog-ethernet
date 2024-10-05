@@ -165,7 +165,11 @@ module tcp_64 #
     output wire        tx_error_payload_early_termination
 );
 
+//Tx
 
+//Rx
+
+//Control?
 
 endmodule
 

@@ -189,22 +189,23 @@ tcp_control
 )
 tcp_control_inst
 (
-  .clk              ()  , // input
-  .rst_n            ()  , // input
+  .clk                        (), // input
+  .rst_n                      (), // input
   //Register bank:
-  .timeout_2msl_in  (), // input  [15:0]
-  .state_out        (), // output [4:0] 
-  .active_open      (), // input        
-  .active_close     (), // input        
+  .timeout_2msl_in            (), // input  [15:0]
+  .state_out                  (), // output [4:0] 
+  .active_open                (), // input        
+  .active_close               (), // input   
+  .connection_established     (),     
   //Packet builder:
-  .syn_send         (), // output
-  .syn_rcvd         (), // input 
-  .fin_send         (), // output
-  .fin_rcvd         (), // input 
-  .ack_send         (), // output
-  .ack_rcvd         (), // input 
-  .syn_ack_rcvd     (), // input 
-  .fin_ack_rcvd     ()  // input 
+  .syn_send                   (), // output
+  .syn_rcvd                   (), // input 
+  .fin_send                   (), // output
+  .fin_rcvd                   (), // input 
+  .ack_send                   (), // output
+  .ack_rcvd                   (), // input 
+  .syn_ack_rcvd               (), // input 
+  .fin_ack_rcvd               ()  // input 
   //other inputs and outputs from reg bank...
 );
 

@@ -6,22 +6,23 @@ module tcp_control
   parameter         DEFAULT_2MSL_TIMER = 16'h1000
 )
 (
-  input             clk              ,
-  input             rst_n            ,
+  input             clk                    ,
+  input             rst_n                  ,
   //Register bank:
-  input [15:0]      timeout_2msl_in  ,
-  output  [4:0]     state_out        ,
-  input             active_open      ,
-  input             active_close     ,
+  input [15:0]      timeout_2msl_in        ,
+  output  [4:0]     state_out              ,
+  input             active_open            ,
+  input             active_close           ,
+  output            connection_established ,
   //Packet builder:
-  output            syn_send         ,
-  input             syn_rcvd         ,
-  output            fin_send         ,
-  input             fin_rcvd         ,
-  output            ack_send         ,
-  input             ack_rcvd         ,
-  input             syn_ack_rcvd     ,
-  input             fin_ack_rcvd      
+  output            syn_send               ,
+  input             syn_rcvd               ,
+  output            fin_send               ,
+  input             fin_rcvd               ,
+  output            ack_send               ,
+  input             ack_rcvd               ,
+  input             syn_ack_rcvd           ,
+  input             fin_ack_rcvd            
 
   //other inputs and outputs from reg bank...
 );
@@ -47,13 +48,13 @@ localparam SEND_ARP_REQ = 5'b10000;
 localparam WAIT_ARP_REP = 5'b10001;
 
 //Internal signals:
-reg  [4:0]    current_state;
-wire [4:0]    next_state   ;
-
-reg           fsm_syn_send ;
-reg           fsm_ack_send ;
-reg           fsm_fin_send ;
-reg           close        ; //TODO define its driver
+reg  [4:0]    current_state              ;
+wire [4:0]    next_state                 ;
+reg           fsm_syn_send               ;
+reg           fsm_ack_send               ;
+reg           fsm_fin_send               ;
+reg           fsm_connection_established ;
+reg           close                      ; //TODO define its driver
 
 //2MSL timer:
 reg  [15:0]   timer_2msl       ;
@@ -62,10 +63,11 @@ wire [15:0]   timeout_2msl     ;
 reg           reset_2msl       ;
 
 //Outputs:
-assign state_out = current_state;
-assign syn_send  = fsm_syn_send;
-assign ack_send  = fsm_ack_send;
-assign fin_send  = fsm_fin_send;
+assign state_out              = current_state              ;
+assign syn_send               = fsm_syn_send               ;
+assign ack_send               = fsm_ack_send               ;
+assign fin_send               = fsm_fin_send               ;
+assign connection_established = fsm_connection_established ; 
 
 //2MSL timer:
 always @ (posedge clk, negedge rst_n)
@@ -95,10 +97,11 @@ end
 always @ (*)
 begin
 
-  fsm_syn_send = 1'b0;
-  fsm_ack_send = 1'b0;
-  fsm_fin_send = 1'b0;
-  reset_2msl   = 1'b1;
+  fsm_syn_send               = 1'b0;
+  fsm_ack_send               = 1'b0;
+  fsm_fin_send               = 1'b0;
+  reset_2msl                 = 1'b1;
+  fsm_connection_established = 1'b0;
 
   case(current_state)
     CLOSED:
@@ -117,7 +120,7 @@ begin
       //Implement for passive open...
     end
 
-    SYN_SEND:
+    SYN_SEND: //TODO: SYN retransmission needed when no SYN/ACK is received
     begin
       if(syn_rcvd == 1'b1)
       begin
@@ -149,6 +152,7 @@ begin
 
     ESTAB:
     begin
+      fsm_connection_established = 1'b1;
       if(close == 1'b1)
       begin
         next_state = FIN_WAIT_1;
@@ -163,7 +167,7 @@ begin
         next_state = ESTAB;
     end
 
-    FIN_WAIT_1:
+    FIN_WAIT_1: //TODO: if FIN/ACK is not received until timeout, connection might be closed using RST flag
     begin
       if(fin_rcvd == 1'b1)
       begin

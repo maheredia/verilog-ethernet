@@ -5,10 +5,11 @@
 `default_nettype none
 
 /*
- * UDP block, IP interface (64 bit datapath)
+ * TCP block, IP interface (64 bit datapath)
  */
 module tcp_64 #
 (
+    parameter DEFAULT_2MSL_TIMER = 16'h1000,
     parameter CHECKSUM_GEN_ENABLE = 1,
     parameter CHECKSUM_PAYLOAD_FIFO_DEPTH = 2048,
     parameter CHECKSUM_HEADER_FIFO_DEPTH = 8
@@ -165,11 +166,47 @@ module tcp_64 #
     output wire        tx_error_payload_early_termination
 );
 
-//Tx
+//Local parameters:
 
-//Rx
+//Internal signals:
 
-//Control?
+//Tx:
+tcp_tx
+#(
+
+)
+tcp_tx_inst
+(
+
+);
+
+//Rx:
+
+//Control:
+tcp_control
+#(
+  .DEFAULT_2MSL_TIMER (DEFAULT_2MSL_TIMER)
+)
+tcp_control_inst
+(
+  .clk              ()  , // input
+  .rst_n            ()  , // input
+  //Register bank:
+  .timeout_2msl_in  (), // input  [15:0]
+  .state_out        (), // output [4:0] 
+  .active_open      (), // input        
+  .active_close     (), // input        
+  //Packet builder:
+  .syn_send         (), // output
+  .syn_rcvd         (), // input 
+  .fin_send         (), // output
+  .fin_rcvd         (), // input 
+  .ack_send         (), // output
+  .ack_rcvd         (), // input 
+  .syn_ack_rcvd     (), // input 
+  .fin_ack_rcvd     ()  // input 
+  //other inputs and outputs from reg bank...
+);
 
 endmodule
 

@@ -177,7 +177,75 @@ tcp_tx
 )
 tcp_tx_inst
 (
-
+  .clk                          (), // input
+  .rst                          (), // input
+  //Control:
+  .connection_established       (), // input
+  .syn_send                     (), // input
+  .ack_send                     (), // input
+  .fin_send                     (), // input
+  //TCP frame input:
+  .s_tcp_hdr_valid              (), // input        
+  .s_tcp_hdr_ready              (), // output       
+  .s_eth_dest_mac               (48'hAAAAAAAAAAAA), // input  [47:0]
+  .s_eth_src_mac                (48'hBBBBBBBBBBBB), // input  [47:0]
+  .s_eth_type                   (), // input  [15:0]
+  .s_ip_version                 (), // input  [3:0] 
+  .s_ip_ihl                     (), // input  [3:0] 
+  .s_ip_dscp                    (), // input  [5:0] 
+  .s_ip_ecn                     (), // input  [1:0] 
+  .s_ip_identification          (), // input  [15:0]
+  .s_ip_flags                   (), // input  [2:0] 
+  .s_ip_fragment_offset         (), // input  [12:0]
+  .s_ip_ttl                     (), // input  [7:0] 
+  .s_ip_header_checksum         (), // input  [15:0]
+  .s_ip_source_ip               (), // input  [31:0]
+  .s_ip_dest_ip                 (), // input  [31:0]
+  .s_tcp_source_port            (), // input  [15:0]
+  .s_tcp_dest_port              (), // input  [15:0]
+  .s_tcp_sequence_number        (), // input  [31:0]
+  .s_tcp_ack_number             (), // input  [31:0]
+  .s_tcp_data_offset            (), // input  [3:0] 
+  .s_tcp_urg                    (), // input        
+  .s_tcp_ack                    (), // input        
+  .s_tcp_psh                    (), // input        
+  .s_tcp_rst                    (), // input        
+  .s_tcp_syn                    (), // input        
+  .s_tcp_fin                    (), // input        
+  .s_tcp_window                 (), // input  [15:0]
+  .s_tcp_checksum               (), // input  [15:0]
+  .s_tcp_urgent_pointer         (), // input  [15:0]
+  .s_tcp_payload_axis_tdata     (), // input  [63:0]
+  .s_tcp_payload_axis_tkeep     (), // input  [7:0] 
+  .s_tcp_payload_axis_tvalid    (), // input        
+  .s_tcp_payload_axis_tready    (), // output       
+  .s_tcp_payload_axis_tlast     (), // input        
+  .s_tcp_payload_axis_tuser     (), // input        
+  //IP frame output:
+  .m_ip_hdr_valid               (), // output       
+  .m_ip_hdr_ready               (), // input        
+  .m_ip_eth_dest_mac            (), // output [47:0]
+  .m_ip_eth_src_mac             (), // output [47:0]
+  .m_ip_eth_type                (), // output [15:0]
+  .m_ip_version                 (), // output [3:0] 
+  .m_ip_ihl                     (), // output [3:0] 
+  .m_ip_dscp                    (), // output [5:0] 
+  .m_ip_ecn                     (), // output [1:0] 
+  .m_ip_length                  (), // output [15:0]
+  .m_ip_identification          (), // output [15:0]
+  .m_ip_flags                   (), // output [2:0] 
+  .m_ip_fragment_offset         (), // output [12:0]
+  .m_ip_ttl                     (), // output [7:0] 
+  .m_ip_protocol                (), // output [7:0] 
+  .m_ip_header_checksum         (), // output [15:0]
+  .m_ip_source_ip               (), // output [31:0]
+  .m_ip_dest_ip                 (), // output [31:0]
+  .m_ip_payload_axis_tdata      (), // output [63:0]
+  .m_ip_payload_axis_tkeep      (), // output [7:0] 
+  .m_ip_payload_axis_tvalid     (), // output       
+  .m_ip_payload_axis_tready     (), // input        
+  .m_ip_payload_axis_tlast      (), // output       
+  .m_ip_payload_axis_tuser      ()  // output       
 );
 
 //Rx:

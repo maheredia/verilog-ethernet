@@ -93,7 +93,7 @@ wire clk_200_int;
 // Need two 125 MHz outputs with 90 degree offset
 // Also need 200 MHz out for IODELAY
 // 1000 / 5 = 200 MHz
-MMCME4_BASE #(
+MMCME2_BASE #(
     .BANDWIDTH("OPTIMIZED"),
     .CLKOUT0_DIVIDE_F(6.25),
     .CLKOUT0_DUTY_CYCLE(0.5),

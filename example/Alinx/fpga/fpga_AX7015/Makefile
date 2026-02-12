@@ -47,7 +47,6 @@ SYN_FILES += lib/eth/lib/axis/rtl/sync_reset.v
 
 # XDC files
 XDC_FILES = fpga_ax7015.xdc
-#XDC_FILES += eth.xdc
 XDC_FILES += lib/eth/syn/vivado/rgmii_phy_if.tcl
 XDC_FILES += lib/eth/syn/vivado/eth_mac_1g_rgmii.tcl
 XDC_FILES += lib/eth/syn/vivado/eth_mac_fifo.tcl
@@ -73,7 +72,7 @@ include ../common/vivado.mk
 # 	echo "exit" >> program.tcl
 # 	vivado -nojournal -nolog -mode batch -source program.tcl
 
-# TODO: CEHCK BITSTREAM AND MCS GENERATION PARAMETERS
+# TODO: CEHCK MCS GENERATION PARAMETERS
 %.mcs %.prm: %.bit
 	echo "write_cfgmem -force -format mcs -size 128 -interface SPIx4 -loadbit {up 0x01002000 $*.bit} -checksum -file $*.mcs" > generate_mcs.tcl
 	echo "exit" >> generate_mcs.tcl

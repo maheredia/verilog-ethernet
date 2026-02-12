@@ -39,9 +39,9 @@ module fpga (
     input  wire       clk,
     input  wire       reset_n,
     /*
-     * GPIO
+     * GPIO & LEDs
      */
-
+    output wire [3:0] leds_out,
     /*
      * Ethernet: 1000BASE-T RGMII
      */
@@ -51,6 +51,7 @@ module fpga (
     input  wire [3:0]           phy2_rxd,
     input  wire                 phy2_rxctl,
     input  wire                 phy2_rxck,
+    output wire                 phy2_rstn,
 
     /*
      * UART
@@ -295,6 +296,8 @@ phy_rx_ctl_idelay
 );
 
 // Core
+wire [7:0] leds_int;
+
 fpga_core #(
     .TARGET("XILINX")
 )
@@ -307,9 +310,9 @@ core_inst (
     .clk90(clk90_int),
     .rst(rst_int),
     /*
-     * GPIO
+     * GPIO & LEDs
      */
-    //TODO...
+    .leds_out(leds_int),
     /*
      * Ethernet: 1000BASE-T RGMII
      */
@@ -319,15 +322,19 @@ core_inst (
     .phy_tx_clk(phy2_txck),
     .phy_txd(phy2_txd),
     .phy_tx_ctl(phy2_txctl),
-    .phy_reset_n(), //TODO
-    .phy_int_n(1'b1), //TODO
-    .phy_pme_n(1'b1), //TODO
+    .phy_reset_n(), //phy reset connected to MMCM lock
+    .phy_int_n(1'b1), //phy2 interrupt not routed in Alinx AX7015 board.
+    .phy_pme_n(1'b1), //Not used
     /*
      * UART: 115200 bps, 8N1
      */
     .uart_rxd(uart_rxd_int),
     .uart_txd(uart_txd)
 );
+
+// Other outputs
+assign phy2_rstn = mmcm_locked;
+assign leds_out = leds_int[3:0];
 
 endmodule
 

@@ -45,9 +45,9 @@ module fpga_core #
     input  wire       rst,
 
     /*
-     * GPIO
+     * GPIO & LEDs
      */
-    //TODO
+    output wire [7:0] leds_out,
 
     /*
      * Ethernet: 1000BASE-T RGMII
@@ -296,7 +296,7 @@ always @(posedge clk) begin
 end
 
 //assign led = sw;
-//assign led = led_reg;
+assign leds_out = led_reg;
 assign phy_reset_n = !rst;
 
 assign uart_txd = 0;

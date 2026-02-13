@@ -336,6 +336,39 @@ core_inst (
 assign phy2_rstn = mmcm_locked;
 assign leds_out = leds_int[3:0];
 
+//ILAs
+
+// ila_rx ila_rx_inst
+// (
+//   .clk(phy2_rxck) ,
+//   .probe0(core_inst.eth_mac_inst.rx_error_bad_frame),
+//   .probe1(core_inst.eth_mac_inst.rx_error_bad_fcs),
+//   .probe2(core_inst.eth_mac_inst.rx_fifo_overflow),
+//   .probe3(core_inst.eth_mac_inst.rx_fifo_bad_frame),
+//   .probe4(core_inst.eth_mac_inst.rx_fifo_good_frame)
+// );
+
+ila_sys ila_sys_inst
+(
+  .clk(clk_int) ,
+  .probe0(core_inst.rx_axis_tdata),
+  .probe1(core_inst.rx_axis_tvalid),
+  .probe2(core_inst.rx_axis_tready),
+  .probe3(core_inst.rx_axis_tlast),
+  .probe4(core_inst.rx_axis_tuser),
+  .probe5(core_inst.rx_eth_hdr_valid),
+  .probe6(core_inst.rx_eth_hdr_ready),
+  .probe7(core_inst.rx_eth_dest_mac),
+  .probe8(core_inst.rx_eth_src_mac),
+  .probe9(core_inst.rx_eth_type),
+  .probe10(core_inst.tx_axis_tdata),
+  .probe11(core_inst.tx_axis_tvalid),
+  .probe12(core_inst.tx_axis_tready),
+  .probe13(core_inst.tx_axis_tlast),
+  .probe14(core_inst.tx_axis_tuser),
+  .probe15(core_inst.udp_complete_inst.ip_tx_error_arp_failed)
+);
+
 endmodule
 
 `resetall

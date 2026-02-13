@@ -102,3 +102,6 @@ set_output_delay 0 [get_ports {phy2_rstn}]
 
 # IDELAY on RGMII from PHY chip
 set_property IDELAY_VALUE 0 [get_cells {phy_rx_ctl_idelay phy_rxd_idelay_*}]
+
+# Timing
+set_clock_groups -asynchronous -group [get_clocks -include_generated_clocks clk] -group {phy2_rxck}

@@ -1,6 +1,14 @@
 *~
 *.lxt
+*.bit
+*.ltx
 *.pyc
 *.vvp
 *.kate-swp
-
+*.fst
+*.log
+*.jou
+*.xml
+*.xpr
+/**/sim_build/*
+/**/iverilog_dump.v

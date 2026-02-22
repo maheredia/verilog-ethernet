@@ -421,13 +421,13 @@ assign phy2_mdio = mdio_t ? 1'bz : mdio_o;
 //   .probe2(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_tx_er)
 // );
 
-ila_rgmii_rx ila_rgmii_rx_inst
-(
-  .clk (core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_rx_clk),
-  .probe0(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_rxd),
-  .probe1(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_rx_dv),
-  .probe2(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_rx_er)
-);
+// ila_rgmii_rx ila_rgmii_rx_inst
+// (
+//   .clk (core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_rx_clk),
+//   .probe0(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_rxd),
+//   .probe1(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_rx_dv),
+//   .probe2(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_rx_er)
+// );
 
 endmodule
 

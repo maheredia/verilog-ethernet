@@ -59,7 +59,7 @@ XDC_FILES += lib/eth/lib/axis/syn/vivado/sync_reset.tcl
 # IP_TCL_FILES += ip/eth_xcvr_gt.tcl
 
 # Configuration
-CONFIG_TCL_FILES = ./config.tcl
+# CONFIG_TCL_FILES = ./config.tcl
 
 include ../common/vivado.mk
 

@@ -9,6 +9,8 @@ SYN_FILES = rtl/fpga_ax7015.v
 SYN_FILES += rtl/fpga_core.v
 SYN_FILES += rtl/debounce_switch.v
 SYN_FILES += rtl/sync_signal.v
+SYN_FILES += rtl/mdio_master.v
+SYN_FILES += rtl/mdio_fsm.v
 SYN_FILES += lib/eth/rtl/iddr.v
 SYN_FILES += lib/eth/rtl/oddr.v
 SYN_FILES += lib/eth/rtl/ssio_ddr_in.v
@@ -57,7 +59,7 @@ XDC_FILES += lib/eth/lib/axis/syn/vivado/sync_reset.tcl
 # IP_TCL_FILES += ip/eth_xcvr_gt.tcl
 
 # Configuration
-# CONFIG_TCL_FILES = ./config.tcl
+CONFIG_TCL_FILES = ./config.tcl
 
 include ../common/vivado.mk
 

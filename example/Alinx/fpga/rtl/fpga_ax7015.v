@@ -52,6 +52,8 @@ module fpga (
     input  wire                 phy2_rxctl,
     input  wire                 phy2_rxck,
     output wire                 phy2_rstn,
+    inout  wire                 phy2_mdio,
+    output wire                 phy2_mdc,
 
     /*
      * UART
@@ -86,7 +88,7 @@ wire clk_200_mmcm_out;
 wire clk_200_int;
 
 // MMCM instance
-// 125 MHz in, 125 MHz out
+// 50 MHz in, 125 MHz out
 // PFD range: 10 MHz to 500 MHz
 // VCO range: 800 MHz to 1600 MHz
 // M = 10, D = 1 sets Fvco = 1250 MHz (in range)
@@ -101,7 +103,7 @@ MMCME2_BASE #(
     .CLKOUT0_PHASE(0),
     .CLKOUT1_DIVIDE(10),
     .CLKOUT1_DUTY_CYCLE(0.5),
-    .CLKOUT1_PHASE(90),
+    .CLKOUT1_PHASE(90.0),
     .CLKOUT2_DIVIDE(10),
     .CLKOUT2_DUTY_CYCLE(0.5),
     .CLKOUT2_PHASE(0),
@@ -117,11 +119,11 @@ MMCME2_BASE #(
     .CLKOUT6_DIVIDE(1),
     .CLKOUT6_DUTY_CYCLE(0.5),
     .CLKOUT6_PHASE(0),
-    .CLKFBOUT_MULT_F(10),
+    .CLKFBOUT_MULT_F(25),
     .CLKFBOUT_PHASE(0),
     .DIVCLK_DIVIDE(1),
     .REF_JITTER1(0.010),
-    .CLKIN1_PERIOD(8.000),
+    .CLKIN1_PERIOD(20.000),
     .STARTUP_WAIT("FALSE"),
     .CLKOUT4_CASCADE("FALSE")
 )
@@ -299,7 +301,8 @@ phy_rx_ctl_idelay
 wire [7:0] leds_int;
 
 fpga_core #(
-    .TARGET("XILINX")
+    .TARGET("XILINX"),
+    .USE_CLK90("FALSE")
 )
 core_inst (
     /*
@@ -336,6 +339,44 @@ core_inst (
 assign phy2_rstn = mmcm_locked;
 assign leds_out = leds_int[3:0];
 
+// MDIO master
+
+wire mdio_t;
+wire mdio_o;
+wire [15:0] mdio_data;
+wire mdio_data_valid;
+wire [4:0] mdio_state;
+wire mdio_busy;
+mdio_fsm
+#(
+  .WAIT_CNT(40000000),
+  .PHY_ADDR(5'h01)
+)
+mdio_fsm
+(
+  .clk (clk_int) ,
+  .rst (rst_int) ,
+  /*
+   * data interface
+   */
+  .data_out        (mdio_data),
+  .data_out_valid  (mdio_data_valid),
+  /*
+   * MDIO to PHY
+   */
+  .mdc_o  (phy2_mdc),
+  .mdio_i (phy2_mdio),
+  .mdio_o (mdio_o),
+  .mdio_t (mdio_t),
+  /*
+   * Status
+   */
+  .busy      (mdio_busy),
+  .state_out (mdio_state)
+);
+
+assign phy2_mdio = mdio_t ? 1'bz : mdio_o;
+
 //ILAs
 
 // ila_rx ila_rx_inst
@@ -348,25 +389,44 @@ assign leds_out = leds_int[3:0];
 //   .probe4(core_inst.eth_mac_inst.rx_fifo_good_frame)
 // );
 
-ila_sys ila_sys_inst
+// ila_sys ila_sys_inst
+// (
+//   .clk(clk_int) ,
+//   .probe0(core_inst.eth_mac_inst.rx_axis_tdata),
+//   .probe1(core_inst.eth_mac_inst.rx_axis_tvalid),
+//   .probe2(core_inst.eth_mac_inst.rx_axis_tready),
+//   .probe3(core_inst.eth_mac_inst.rx_axis_tlast),
+//   .probe4(core_inst.eth_mac_inst.rx_axis_tuser),
+//   .probe5(core_inst.rx_eth_hdr_valid),
+//   .probe6(core_inst.rx_eth_hdr_ready),
+//   .probe7(core_inst.rx_eth_dest_mac),
+//   .probe8(core_inst.rx_eth_src_mac),
+//   .probe9(core_inst.rx_eth_type),
+//   .probe10(core_inst.eth_mac_inst.tx_axis_tdata),
+//   .probe11(core_inst.eth_mac_inst.tx_axis_tvalid),
+//   .probe12(core_inst.eth_mac_inst.tx_axis_tready),
+//   .probe13(core_inst.eth_mac_inst.tx_axis_tlast),
+//   .probe14(core_inst.eth_mac_inst.tx_axis_tuser),
+//   .probe15(mdio_state),
+//   .probe16(mdio_busy),
+//   .probe17(mdio_data),
+//   .probe18(mdio_data_valid)
+// );
+
+// ila_rgmii_tx ila_rgmii_tx_inst
+// (
+//   .clk (core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_tx_clk),
+//   .probe0(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_txd),
+//   .probe1(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_tx_en),
+//   .probe2(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_tx_er)
+// );
+
+ila_rgmii_rx ila_rgmii_rx_inst
 (
-  .clk(clk_int) ,
-  .probe0(core_inst.rx_axis_tdata),
-  .probe1(core_inst.rx_axis_tvalid),
-  .probe2(core_inst.rx_axis_tready),
-  .probe3(core_inst.rx_axis_tlast),
-  .probe4(core_inst.rx_axis_tuser),
-  .probe5(core_inst.rx_eth_hdr_valid),
-  .probe6(core_inst.rx_eth_hdr_ready),
-  .probe7(core_inst.rx_eth_dest_mac),
-  .probe8(core_inst.rx_eth_src_mac),
-  .probe9(core_inst.rx_eth_type),
-  .probe10(core_inst.tx_axis_tdata),
-  .probe11(core_inst.tx_axis_tvalid),
-  .probe12(core_inst.tx_axis_tready),
-  .probe13(core_inst.tx_axis_tlast),
-  .probe14(core_inst.tx_axis_tuser),
-  .probe15(core_inst.udp_complete_inst.ip_tx_error_arp_failed)
+  .clk (core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_rx_clk),
+  .probe0(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_rxd),
+  .probe1(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_rx_dv),
+  .probe2(core_inst.eth_mac_inst.eth_mac_1g_rgmii_inst.rgmii_phy_if_inst.mac_gmii_rx_er)
 );
 
 endmodule

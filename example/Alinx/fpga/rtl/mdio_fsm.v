@@ -154,7 +154,7 @@ always @(posedge clk) begin
                     mdio_cmd_data <= 16'd0;
                     mdio_cmd_valid <= 1'b1;
                     mdio_cmd_opcode <= 2'b10;
-                    state_reg <= ST_WR_BMCR;
+                    state_reg <= ST_WAIT;//ST_WR_BMCR;
                 end
 
                 ST_WR_BMCR:

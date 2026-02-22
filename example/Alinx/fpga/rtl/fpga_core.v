@@ -33,7 +33,8 @@ THE SOFTWARE.
  */
 module fpga_core #
 (
-    parameter TARGET = "GENERIC"
+    parameter TARGET = "GENERIC",
+    parameter USE_CLK90 = "TRUE"
 )
 (
     /*
@@ -305,7 +306,7 @@ eth_mac_1g_rgmii_fifo #(
     .TARGET(TARGET),
     .IODDR_STYLE("IODDR"),
     .CLOCK_INPUT_STYLE("BUFR"),
-    .USE_CLK90("TRUE"),
+    .USE_CLK90(USE_CLK90),
     .ENABLE_PADDING(1),
     .MIN_FRAME_LENGTH(64),
     .TX_FIFO_DEPTH(4096),

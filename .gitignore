@@ -12,3 +12,6 @@
 *.xpr
 /**/sim_build/*
 /**/iverilog_dump.v
+/**/*.runs/
+/**/*.hw/
+/**/*.cache/
